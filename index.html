@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>카드 룰렛</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- CSS 파일 로드 -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="p-4 md:p-8">
+    <div id="game">
+        <h1 class="main-title">나만의 카드 룰렛</h1>
+        <p class="sub-title">선택지를 입력하고, 카드를 섞은 후 한 장을 뽑아 결정을 도와보세요!</p>
+
+        <!-- 카드 룰렛 영역 -->
+        <div id="cards" class="relative">
+            <!-- 카드 동적 생성 -->
+            <p id="prompt" class="text-gray-400">선택지를 입력하고 '카드 생성' 버튼을 눌러주세요。</p>
+        </div>
+
+        <!-- 확률 및 정보 표시 영역 -->
+        <div id="info" class="mb-6 p-4">
+            <h2 class="info-title">선택 정보</h2>
+            <div id="prob" class="text-sm">
+                <!-- 확률 정보 표시 -->
+                <p>총 선택지: <span id="count">0</span>개</p>
+            </div>
+            <div id="msg" class="result-msg hidden">카드를 클릭하여 선택 결과를 확인하세요!</div>
+        </div>
+
+        <!-- 입력 및 제어 영역 -->
+        <div id="controls">
+            <div class="input-grp mb-4">
+                <label for="input">선택지 입력 (쉼표 ','로 구분)</label>
+                <textarea id="input" placeholder="예: 치킨*2, 피자, 초밥, 햄버거, 샐러드"></textarea>
+            </div>
+            
+            <div class="flex justify-between items-center">
+                <button id="startBtn" class="btn btn-primary">
+                    카드 생성 및 섞기 시작
+                </button>
+                <button id="resetBtn" class="btn btn-secondary">
+                    초기화
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript 파일 로드 -->
+    <script src="script.js"></script>
+</body>
+</html>
+
