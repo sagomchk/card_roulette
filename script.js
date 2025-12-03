@@ -22,6 +22,98 @@ document.addEventListener('DOMContentLoaded', () => {
     let isSelectionEnabled = false;
     let finalChoices = [];
     let selectedCardIndex = -1;
+    
+    let globalZIndex = 1000; 
+
+    // =========================================================
+    // 입력값 파싱 헬퍼 함수들
+    // =========================================================
+
+    // 문자열을 쉼표(,)로 나누되, 괄호 () 안의 쉼표는 무시
+    function splitByComma(str) {
+        const parts = [];
+        let current = '';
+        let depth = 0;
+        
+        for (let i = 0; i < str.length; i++) {
+            const char = str[i];
+            if (char === '(') depth++;
+            else if (char === ')') depth--;
+            
+            if (char === ',' && depth === 0) {
+                parts.push(current);
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        if (current) parts.push(current);
+        return parts;
+    }
+
+    // 문자열이 괄호로 감싸져 있는지 확인
+    function isWrappedInParens(str) {
+        if (!str.startsWith('(') || !str.endsWith(')')) return false;
+        let depth = 0;
+        for (let i = 0; i < str.length; i++) {
+            if (str[i] === '(') depth++;
+            else if (str[i] === ')') depth--;
+            
+            // 마지막 문자가 아닌데 괄호가 닫힌 경우
+            if (depth === 0 && i < str.length - 1) {
+                return false; 
+            }
+        }
+        return depth === 0;
+    }
+
+
+    // 입력 문자열 분석 최종 항목 리스트 반환
+    function parseInput(text) {
+        let results = [];
+        const chunks = splitByComma(text);
+        
+        chunks.forEach(chunk => {
+            chunk = chunk.trim();
+            if (!chunk) return;
+
+            // "내용 * 숫자" 형식인지 확인 (마지막 * 기준, 정규식 이용)
+            const multiplierMatch = chunk.match(/^(.*)\*\s*(\d+)$/);
+            
+            if (multiplierMatch) {
+                // 곱하기가 있는 경우
+                let base = multiplierMatch[1].trim();
+                const count = parseInt(multiplierMatch[2], 10);
+                
+                // base가 괄호로 감싸져 있다면 괄호 제거 후 재귀 호출
+                if (isWrappedInParens(base)) {
+                    const innerContent = base.slice(1, -1); // 괄호 제거
+                    const innerItems = parseInput(innerContent); // 재귀적 파싱
+                    
+                    // 결과 items를 count만큼 반복해서 추가
+                    for(let k = 0; k < count; k++) {
+                        results.push(...innerItems);
+                    }
+                } else {
+                    // 단순 항목 처리
+                    for(let k = 0; k < count; k++) {
+                        results.push(base);
+                    }
+                }
+            } else {
+                // 곱하기가 없는 경우
+                // 괄호만 있는 경우 처리
+                if (isWrappedInParens(chunk)) {
+                    const innerContent = chunk.slice(1, -1);
+                    results.push(...parseInput(innerContent));
+                } else {
+                    // 일반 텍스트
+                    results.push(chunk);
+                }
+            }
+        });
+        return results;
+    }
 
     // =========================================================
     // 입력 처리 및 초기 설정
@@ -31,44 +123,23 @@ document.addEventListener('DOMContentLoaded', () => {
     startBtn.addEventListener('click', () => {
         const rawInput = inputEl.value;
         
-        // 입력값을 파싱하여 가중치 처리
-        const entries = rawInput.split(',').map(item => item.trim()).filter(item => item !== '');
-        
-        finalChoices = [];                      // 최종 선택지 배열
-        const regex = /^(.+?)\s*\*\s*(\d+)$/;   // "이름 * 숫자" 형식 탐색
-
-        entries.forEach(entry => {
-            const match = entry.match(regex);
-            
-            if (match) {
-                // "이름 * 숫자" 형식일 경우 (예: "치킨 * 2")
-                const choiceName = match[1].trim();     // "치킨"
-                const count = parseInt(match[2], 10);   // "2"
-                
-                // 숫자(count)만큼 배열에 추가
-                for (let i = 0; i < count; i++) {
-                    finalChoices.push(choiceName);
-                }
-            } else {
-                // 일반 항목일 경우 (예: "피자")
-                if (entry) {    // 빈 문자열이 아닌 경우
-                    finalChoices.push(entry);
-                }
-            }
-        });
+        finalChoices = parseInput(rawInput);
 
         if (finalChoices.length < 2) {
             alert('최소 2개 이상의 선택지를 입력해주세요.');
             return;
         }
         
-        // 1. 실제 데이터 셔플
+        // 초기화
+        globalZIndex = 1000; 
+
+        // 1.실제 데이터 셔플
         shuffleArray(finalChoices);
 
-        // 2. 상태 업데이트
+        // 2.상태 업데이트
         updateUIForShuffling(finalChoices);
 
-        // 3. 카드 생성 (DOM 생성 및 초기 위치 설정)
+        // 3.카드 생성 (DOM 생성 및 초기 위치 설정)
         createCards(finalChoices);
 
         // 애니메이션 타이밍 로직
@@ -76,19 +147,19 @@ document.addEventListener('DOMContentLoaded', () => {
         // 카드 펼치기 애니메이션 시작
         spreadCards();
         
-        // 1. 펼치기 시간 (1.2초)
+        // 1.펼치기 시간 (1.2초)
         const spreadTime = 1200; 
 
-        // 2. 섞기 시간
+        // 2.섞기 시간
         const shuffleTime = 1400;
 
-        // 3. 복귀 시간
+        // 3.복귀 시간
         const restoreTime = 600;
 
         // 섞기 애니메이션 시작 (펼쳐진 후)
         setTimeout(() => {
             shuffleCards(finalChoices.length);
-        }, spreadTime); // 1.2초 후 섞기 시작
+        }, spreadTime);  // 1.2초 후 섞기 시작
 
         // 버튼 텍스트 변경
         startBtn.textContent = '선택 준비 중...';
@@ -96,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 애니메이션이 끝난 후 선택 가능 상태로 변경
         
-        // 섞기 후 정돈된 위치로 복귀 (펼치기 + 섞기 시간 후)
+        // 섞기 후 정돈된 위치로 복귀 (펼치기 + 섞기 이후)
         setTimeout(() => {
             restoreCardOrder(); 
         }, spreadTime + shuffleTime); 
@@ -105,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             enableSelection();
             startBtn.textContent = '선택 완료!';
-            startBtn.disabled = true; 
+            // startBtn.disabled = true; 
         }, spreadTime + shuffleTime + restoreTime);
     });
 
@@ -150,8 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
         choices.forEach((choice) => {
             choiceCounts[choice] = (choiceCounts[choice] || 0) + 1;
         });
-        // 예: choiceCounts = { '치킨': 2, '피자': 1 }
-
+        
         const probabilityList = document.createElement('ul');
         probabilityList.id = 'list';
         probabilityList.className = 'mt-2 text-gray-400';
@@ -178,12 +248,12 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const totalCards = choices.length;
         const fanAngle = 120;   // 총 각도 범위 (도)
-        const overlap = 40;     // 카드 사이 간격
-        const baseRadius = 50;  // 기본 Y 위치
+        const overlap = 40;     // 카드 사이 간격 (px)
+        const baseRadius = 50;  // 기본 Y 위치 (px)
         const initialRotation = - (fanAngle / 2); // 시작 각도 조정 (중앙 정렬)
 
         choices.forEach((choice, index) => {
-            // 1. 카드 DOM 요소 생성
+            // 카드 DOM 요소 생성
             const cardElement = document.createElement('div');
             cardElement.className = 'card';
             cardElement.dataset.choice = choice;
@@ -199,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
             cardElement.appendChild(front);
             cardElement.appendChild(back);
             
-            // 2. 둥근 부채꼴 배치 계산
+            // 둥근 부채꼴 배치 계산
             const rotation = initialRotation + (fanAngle / (totalCards - 1 || 1)) * index;
             const translateX = (index - (totalCards - 1) / 2) * overlap;
             const centerIndex = (totalCards - 1) / 2;
@@ -215,22 +285,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 translateZ(${index * 0.1}px) 
             `; 
 
-            // 3. 최종 정돈된 위치를 데이터셋에 저장
+            // 최종 정돈된 위치를 데이터셋에 저장
             cardElement.dataset.finalTransform = finalTransform;
             
-            // 4. 초기 배치 (애니메이션 시작점)
+            // 초기 배치 (애니메이션 시작점)
             cardElement.style.transform = `translateY(${totalY + 50}px) rotateZ(0deg)`; // 아래에서 등장
             
-            // 5. DOM에 추가
+            // DOM에 추가
             cardsEl.appendChild(cardElement);
         });
     }
 
-    // 생성된 카드들을 부채꼴로 펼치는 애니메이션 실행
+    // 부채꼴 애니메이션 실행
     function spreadCards() {
         const cards = document.querySelectorAll('.card');
         cards.forEach((card, index) => {
-            // 순차적으로 등장 애니메이션
+            // 순차적 등장 애니메이션
             setTimeout(() => {
                 card.style.transform = card.dataset.finalTransform;
             }, 100 + index * 50); 
@@ -242,11 +312,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const cards = document.querySelectorAll('.card');
         
         cards.forEach(card => {
-            // 중앙으로 이동하며 세로로 정렬
+            // 중앙으로 이동하며 세로로 정렬 (rotate(0deg))
             card.style.transform = `translate(0px, 50px) rotate(0deg)`;
         });
 
-        // 800ms 동안 깜빡이도록 (600ms은 모이는 시간)
+        // 800ms 동안 깜빡이도록 (모이는 시간 600ms)
         const blinkStartTime = 600; 
         setTimeout(() => {
             cards.forEach(card => {
@@ -276,15 +346,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // 카드를 선택할 수 있도록 이벤트 리스너 추가
     function enableSelection() {
         isSelectionEnabled = true;
-        msgEl.textContent = '카드를 클릭하여 선택 결과를 확인하세요!';
+        msgEl.textContent = '카드를 클릭하여 선택 결과를 확인하세요! (여러 장 선택 가능)';
         msgEl.classList.remove('hidden');
 
         const cards = document.querySelectorAll('.card');
         cards.forEach(card => {
             card.addEventListener('click', handleCardSelection);
-            // Hover 시 살짝 띄우는 효과 추가
+            
+            // Hover 시 살짝 띄우는 효과 추가 (선택된 카드는 제외)
             card.addEventListener('mouseenter', () => {
-                if (isSelectionEnabled) {       // 선택 가능할 때만 hover 효과
+                if (isSelectionEnabled && !card.classList.contains('selected') && !card.classList.contains('discarded')) {       
                     card.classList.add('hover:scale-105', 'hover:shadow-2xl');
                     card.style.zIndex = 50;     // 마우스 오버 시 z-index를 높여서 강조
                 }
@@ -292,7 +363,10 @@ document.addEventListener('DOMContentLoaded', () => {
             card.addEventListener('mouseleave', () => {
                 if (isSelectionEnabled) {
                     card.classList.remove('hover:scale-105', 'hover:shadow-2xl');
-                    card.style.zIndex = ''; // 원래대로 복귀
+                    // 선택된 카드가 아닐 때만 z-index 복구
+                    if (!card.classList.contains('selected')) {
+                        card.style.zIndex = ''; 
+                    }
                 }
             });
         });
@@ -301,34 +375,33 @@ document.addEventListener('DOMContentLoaded', () => {
     // 사용자가 카드를 클릭했을 때 실행되는 핸들러
     function handleCardSelection(event) {
         if (!isSelectionEnabled) {
-            return;     // 선택 준비가 안 되었으면 무시
+            return; 
         }
-        isSelectionEnabled = false;     // 한 번 선택하면 다시 선택 불가
-
+        
         const selectedCard = event.currentTarget;
+        
+        // 이미 선택되거나 버려진 카드는 무시
+        if (selectedCard.classList.contains('selected') || selectedCard.classList.contains('discarded')) return;
+
         const finalChoice = selectedCard.dataset.choice;
 
-        // 모든 카드에서 이벤트 리스너 제거
-        document.querySelectorAll('.card').forEach(card => {
-            card.removeEventListener('click', handleCardSelection);
-            card.removeEventListener('mouseenter', null);
-            card.removeEventListener('mouseleave', null);
-            card.classList.remove('hover:scale-105', 'hover:shadow-2xl');
-            card.style.zIndex = 1; // 모든 카드의 z-index 통일
-            
-            // 선택되지 않은 카드들은 투명도를 변경하지 않고 원래대로 둠
-            card.style.opacity = '1'; 
+        // 이전에 선택된 카드(중앙에 있는 카드)들을 찾아 사라지게 처리
+        const previouslySelected = document.querySelectorAll('.card.selected');
+        previouslySelected.forEach(card => {
+            card.classList.remove('selected');
+            card.classList.add('discarded'); // 사라지는 애니메이션 적용
         });
-        
-        // 선택된 카드만 뒤집어 결과 표시
-        // .is-flipped 클래스 대신 .selected 클래스가 뒤집기 처리
-        selectedCard.classList.add('selected'); 
-        selectedCard.style.zIndex = 100; // 선택된 카드 강조
-        
 
+        // Hover 효과 즉시 제거
+        selectedCard.classList.remove('hover:scale-105', 'hover:shadow-2xl');
+
+        // 새 카드를 선택 상태로 만들고 z-index 최상위로 설정
+        globalZIndex++;
+        selectedCard.classList.add('selected'); 
+        selectedCard.style.zIndex = globalZIndex;
+        
         // 최종 결과 출력
-        msgEl.textContent = `당신의 선택은 바로: ${finalChoice} 🎉`;
-        msgEl.style.color = '#7dff7d'; // 초록색으로 강조
+        msgEl.textContent = `이번 선택: ${finalChoice} (다른 카드도 뽑아보세요!)`;
+        msgEl.style.color = '#7dff7d'; 
     }
 });
-
