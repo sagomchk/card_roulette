@@ -41,7 +41,7 @@ body {
 #cards {
     position: relative;
     width: 100%;
-    height: 300px;          /* 카드 배치를 위한 높이 */
+    height: 300px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -118,6 +118,14 @@ body {
     box-shadow: 0 0 25px rgba(255, 255, 0, 0.8);      /* 노란색 하이라이트 */
     transform: scale(1.1) rotateY(180deg) !important;   /* 선택된 카드는 확대 및 뒤집기 유지 */
     z-index: 100;
+}
+
+/* 사라지는 카드 스타일 */
+.card.discarded {
+    opacity: 0;                 /* 투명하게 */
+    pointer-events: none;       /* 클릭 불가능하게 */
+    transform: scale(0.8) rotateY(180deg) !important; /* 작아지면서 사라짐 */
+    transition: opacity 0.5s ease-out, transform 0.5s ease-in;
 }
 
 /* 입력 및 정보 영역 */
@@ -201,4 +209,3 @@ body {
 .btn-secondary:hover {
     background-color: #4b5563;
 }
-
